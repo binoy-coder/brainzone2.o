@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BrainZone - Quiz</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>BrainZone IQ Game</h1>
+    <div id="question-container">
+      <p id="timer">Time left: 60s</p>
+      <p id="question">Loading question...</p>
+      <div id="options"></div>
+      <button id="next-btn" disabled>Next</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDc3AzkXZW7Rq6WrWNPCsiktmLpSeMxKFI",
+      authDomain: "brainzone-eadc5.firebaseapp.com",
+      projectId: "brainzone-eadc5",
+      storageBucket: "brainzone-eadc5.appspot.com",
+      messagingSenderId: "608266082607",
+      appId: "1:608266082607:web:fe1a21125347aaa744e9da",
+      measurementId: "G-Y557HGLBR5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const playerName = sessionStorage.getItem("playerName") || "Unknown Player";
+
+    const questions = [
+      {
+        question: "What is the capital of France?",
+        options: ["Paris", "London", "Berlin", "Madrid"],
+        answer: "Paris"
+      },
+      {
+        question: "What is 10 + 20?",
+        options: ["15", "30", "25", "20"],
+        answer: "30"
+      }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let timer;
+    let timeLeft = 60;
+
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+    const nextBtn = document.getElementById("next-btn");
+    const timerEl = document.getElementById("timer");
+
+    function loadQuestion() {
+      nextBtn.disabled = true;
+      const current = questions[currentQuestionIndex];
+      questionEl.textContent = current.question;
+      optionsEl.innerHTML = "";
+      current.options.forEach(option => {
+        const btn = document.createElement("button");
+        btn.textContent = option;
+        btn.onclick = () => selectAnswer(option, current.answer);
+        optionsEl.appendChild(btn);
+      });
+
+      timeLeft = 60;
+      timerEl.textContent = `Time left: ${timeLeft}s`;
+      timer = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = `Time left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          nextBtn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    function selectAnswer(selected, correct) {
+      clearInterval(timer);
+      if (selected === correct) score++;
+      nextBtn.disabled = false;
+    }
+
+    nextBtn.onclick = async () => {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < questions.length) {
+        loadQuestion();
+      } else {
+        // Save score to Firestore and redirect
+        try {
+          await addDoc(collection(db, "leaderboard"), {
+            name: playerName,
+            score: score,
+            timestamp: Date.now()
+          });
+        } catch (err) {
+          console.error("Error saving score:", err);
+        }
+        window.location.href = "leaderboard.html";
+      }
+    };
+
+    loadQuestion();
+  </script>
+</body>
+</html>
